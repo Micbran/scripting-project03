@@ -2,30 +2,38 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-[RequireComponent(typeof(GrappleInput))]
 public class GrappleHandler : MonoBehaviour
 {
-    [SerializeField] private GameObject fistObject = null;
     [SerializeField] private Transform playerFistHome = null;
+    [SerializeField] private GrappleInput inputHandler = null;
+    [SerializeField] private GameObject objectArt = null;
 
     [SerializeField] private float maxDistance = 20f;
     [SerializeField] private float grappleFlySpeed = 10f;
     private Camera mainCamera = null;
+    private BoxCollider fistCollider = null;
 
-    private GrappleInput inputHandler = null;
-
-    private bool grappleRetracted = true;
+    private bool grappleOut = false;
     private bool isGrappling = false;
-    private Coroutine coroutRef;
+    private bool grappleRetracting = false;
+    private Transform thisTransform = null;
 
-    private int tester = 1;
 
-    private RaycastHit grapplePoint;
+    private Vector3 fistDirection = Vector3.zero;
+
+    private float FistDistance
+    { get { return (Vector3.Distance(thisTransform.position, playerFistHome.position)); } }
+
 
     private void Awake()
     {
-        inputHandler = this.GetComponent<GrappleInput>();
         mainCamera = Camera.main;
+        fistCollider = this.GetComponent<BoxCollider>();
+        thisTransform = this.transform;
+        fistCollider.enabled = false;
+        thisTransform.position = playerFistHome.position;
+        objectArt.SetActive(false);
+        fistCollider.enabled = false;
     }
 
     private void OnEnable()
@@ -42,36 +50,50 @@ public class GrappleHandler : MonoBehaviour
 
     private void OnGrapplePressed()
     {
-        grappleRetracted = false;
-        Debug.Log("Grapple fired!");
-        fistObject.SetActive(true);
-        Ray toBeRaycasted = mainCamera.ScreenPointToRay(Input.mousePosition);
-        if(Physics.Raycast(toBeRaycasted, out grapplePoint, maxDistance))
+        if(!grappleOut)
         {
-            fistObject.transform.LookAt(grapplePoint.point);
-            coroutRef = StartCoroutine(Grappling());
+            grappleOut = true;
+            grappleRetracting = false;
+            objectArt.SetActive(true);
+            fistCollider.enabled = true;
+            thisTransform.position = playerFistHome.position;
+            Ray toBeRaycasted = mainCamera.ScreenPointToRay(Input.mousePosition);
+            fistDirection = toBeRaycasted.direction;
+            thisTransform.rotation = Quaternion.LookRotation(mainCamera.transform.forward);
         }
-
     }
 
     private void OnGrappleReleased()
     {
-        grappleRetracted = true;
-        Debug.Log("Grapple retracting...");
-        fistObject.transform.position = playerFistHome.transform.position;
-        StopCoroutine(coroutRef);
+        grappleOut = false;
+        isGrappling = false;
+        fistCollider.enabled = false;
+        thisTransform.position = playerFistHome.transform.position;
+        objectArt.SetActive(false);
     }
 
-    private IEnumerator Grappling()
+    private void FixedUpdate()
     {
-        while(true)
+        if(grappleOut)
         {
-            Vector3 grappleDirection = grapplePoint.point - fistObject.transform.position;
-            if(grappleDirection.magnitude >= 0.5f)
-                fistObject.transform.position = fistObject.transform.position + grappleDirection.normalized * grappleFlySpeed;
-            Debug.Log("Test: " + tester++);
-            yield return null;
+            Vector3 grappleDirection = fistDirection;
+            if (grappleDirection.magnitude >= 0.5f && FistDistance < maxDistance && !isGrappling && !grappleRetracting)
+                thisTransform.position = thisTransform.position + grappleDirection.normalized * grappleFlySpeed;
+            if(Mathf.Abs(FistDistance - maxDistance) <= 0.5f)
+            {
+                isGrappling = false;
+                grappleRetracting = true;
+            }
         }
     }
 
+    private void OnTriggerEnter(Collider other)
+    {
+        Debug.Log("Collision.");
+        if (other.gameObject.CompareTag("Terrain"))
+        {
+            isGrappling = true;
+            Debug.Log("Collision with terrain.");
+        }
+    }
 }
