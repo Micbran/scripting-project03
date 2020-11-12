@@ -7,6 +7,9 @@ public class GrappleHandler : MonoBehaviour
     [SerializeField] private Transform playerFistHome = null;
     [SerializeField] private GrappleInput inputHandler = null;
     [SerializeField] private GameObject objectArt = null;
+    [SerializeField] private Transform RopeOrigin = null;
+    [SerializeField] private Transform RopeEndPoint = null;
+    [SerializeField] private LineRenderer ropeLineDefinition = null;
 
     [SerializeField] private float maxDistance = 20f;
     [SerializeField] private float grappleFlySpeed = 10f;
@@ -56,6 +59,7 @@ public class GrappleHandler : MonoBehaviour
             grappleRetracting = false;
             objectArt.SetActive(true);
             fistCollider.enabled = true;
+            ropeLineDefinition.gameObject.SetActive(true);
             thisTransform.position = playerFistHome.position;
             Ray toBeRaycasted = mainCamera.ScreenPointToRay(Input.mousePosition);
             fistDirection = toBeRaycasted.direction;
@@ -65,17 +69,22 @@ public class GrappleHandler : MonoBehaviour
 
     private void OnGrappleReleased()
     {
-        grappleOut = false;
+        //grappleOut = false;
         isGrappling = false;
+        grappleRetracting = true;
+
         fistCollider.enabled = false;
-        thisTransform.position = playerFistHome.transform.position;
+        ropeLineDefinition.gameObject.SetActive(false);
         objectArt.SetActive(false);
+        //thisTransform.position = playerFistHome.transform.position;
     }
 
     private void FixedUpdate()
     {
         if(grappleOut)
         {
+            ropeLineDefinition.SetPositions(new Vector3[] { RopeEndPoint.position, RopeOrigin.position});
+            thisTransform.rotation = Quaternion.LookRotation((RopeEndPoint.position - RopeOrigin.position).normalized);
             Vector3 grappleDirection = fistDirection;
             if (grappleDirection.magnitude >= 0.5f && FistDistance < maxDistance && !isGrappling && !grappleRetracting)
                 thisTransform.position = thisTransform.position + grappleDirection.normalized * grappleFlySpeed;
@@ -83,6 +92,16 @@ public class GrappleHandler : MonoBehaviour
             {
                 isGrappling = false;
                 grappleRetracting = true;
+            }
+            if(grappleRetracting)
+            {
+                thisTransform.rotation = Quaternion.LookRotation(-(RopeEndPoint.position - RopeOrigin.position).normalized);
+                thisTransform.position = Vector3.MoveTowards(thisTransform.position, playerFistHome.position, 0.3f);
+            }
+            if(Mathf.Abs(FistDistance) < 0.5f && grappleRetracting)
+            {
+                grappleOut = false;
+                OnGrappleReleased();
             }
         }
     }
