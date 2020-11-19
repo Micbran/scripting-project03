@@ -14,11 +14,11 @@ public class GrappleInput : MonoBehaviour
 
     private void DetectGrappleInput()
     {
-        if(Input.GetMouseButtonDown((int)MouseButton.RightClick))
+        if (Input.GetMouseButtonDown((int)MouseButton.RightClick))
         {
             GrapplePressed.Invoke();
         }
-        else if(Input.GetMouseButtonUp((int)MouseButton.RightClick))
+        else if (Input.GetMouseButtonUp((int)MouseButton.RightClick))
         {
             GrappleReleased.Invoke();
         }
