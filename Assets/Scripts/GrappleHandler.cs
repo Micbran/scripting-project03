@@ -8,7 +8,7 @@ public class GrappleHandler : MonoBehaviour
     [SerializeField] private Transform RopeOrigin = null;
     [SerializeField] private Transform RopeEndPoint = null;
     [SerializeField] private LineRenderer ropeLineDefinition = null;
-    [SerializeField] private Rigidbody rbToMove = null;
+    [SerializeField] private Rigidbody rigidbodyToMove = null;
 
     [SerializeField] private float maxDistance = 20f;
     [SerializeField] private float grappleFlySpeed = 10f;
@@ -16,6 +16,9 @@ public class GrappleHandler : MonoBehaviour
     [SerializeField] private float grappleForce = 45f;
     [SerializeField] private float grappleAntigravityConstant = 5f;
     [SerializeField] private float playerControlForceConstant = 7.5f;
+    [SerializeField] private float grappleCooldown = 1.5f;
+
+    private float grappleCurrentCooldown = 0f;
 
     private Camera mainCamera = null;
     private BoxCollider fistCollider = null;
@@ -30,6 +33,8 @@ public class GrappleHandler : MonoBehaviour
 
     private float FistDistance
     { get { return (Vector3.Distance(thisTransform.position, playerFistHome.position)); } }
+
+    public float GrappleCurrentCooldown { get { return grappleCurrentCooldown; } }    
 
 
     private void Awake()
@@ -57,7 +62,7 @@ public class GrappleHandler : MonoBehaviour
 
     private void OnGrapplePressed()
     {
-        if(!grappleOut)
+        if(!grappleOut && grappleCurrentCooldown <= 0)
         {
             grappleOut = true;
             grappleRetracting = false;
@@ -108,15 +113,20 @@ public class GrappleHandler : MonoBehaviour
                 ropeLineDefinition.gameObject.SetActive(false);
                 objectArt.SetActive(false);
                 fistCollider.enabled = false;
+                grappleCurrentCooldown = grappleCooldown;
             }
             if(isGrappling)
             {
                 // funny things to do: multiply force by inverse of ratio of the max distance/current distance (aka more force when further away)
                 // check for negative y movement on first addforce, lessen if present
-                rbToMove.AddForce(-(RopeEndPoint.position - RopeOrigin.position).normalized * grappleForce);
-                rbToMove.AddForce(Vector3.up * grappleAntigravityConstant);
+                rigidbodyToMove.AddForce(-(RopeEndPoint.position - RopeOrigin.position).normalized * grappleForce);
+                rigidbodyToMove.AddForce(Vector3.up * grappleAntigravityConstant);
                 ApplyPlayerControlForce();
             }
+        }
+        else if(grappleCurrentCooldown > 0)
+        {
+            grappleCurrentCooldown -= Time.deltaTime;
         }
     }
 
@@ -124,7 +134,7 @@ public class GrappleHandler : MonoBehaviour
     {
         Vector3 playerControlNormalVector = GetPlayerControlNormalVector();
 
-        rbToMove.AddForce(playerControlNormalVector * playerControlForceConstant);
+        rigidbodyToMove.AddForce(playerControlNormalVector * playerControlForceConstant);
     }
 
     private Vector3 GetPlayerControlNormalVector()
