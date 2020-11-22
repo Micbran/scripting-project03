@@ -73,6 +73,8 @@ public class GrappleHandler : MonoBehaviour
             Ray toBeRaycasted = mainCamera.ScreenPointToRay(Input.mousePosition);
             fistDirection = toBeRaycasted.direction;
             thisTransform.rotation = Quaternion.LookRotation(mainCamera.transform.forward);
+            AudioManager.Instance.PlaySoundEffect(SoundEffect.GrappleFire);
+            AudioManager.Instance.StartLoopedSoundEffect(SoundEffect.Spooling);
         }
     }
 
@@ -113,6 +115,8 @@ public class GrappleHandler : MonoBehaviour
                 ropeLineDefinition.gameObject.SetActive(false);
                 objectArt.SetActive(false);
                 fistCollider.enabled = false;
+                AudioManager.Instance.StopAllLoopedSoundEffects();
+                AudioManager.Instance.PlaySoundEffect(SoundEffect.GrappleReturn);
                 grappleCurrentCooldown = grappleCooldown;
             }
             if(isGrappling)
@@ -155,9 +159,9 @@ public class GrappleHandler : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        Debug.Log("Collision.");
-        if (other.gameObject.CompareTag("Terrain"))
+        if (other.gameObject.CompareTag("Terrain") && !isGrappling)
         {
+            AudioManager.Instance.PlaySoundEffect(SoundEffect.GrappleCollision);
             isGrappling = true;
         }
     }
