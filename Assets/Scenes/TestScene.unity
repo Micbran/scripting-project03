@@ -400,12 +400,6 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 77078597}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
---- !u!4 &84544011 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 401960, guid: 7737647c22c1fc64a88d5cd030c352ce,
-    type: 3}
-  m_PrefabInstance: {fileID: 422372540}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &87370609
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1339,11 +1333,11 @@ PrefabInstance:
       objectReference: {fileID: 422372541}
     - target: {fileID: 715311621, guid: 183c2d64d56b4eb49a2b4e02b20ec7e3, type: 3}
       propertyPath: grappleFlySpeed
-      value: 0.6
+      value: 0.7
       objectReference: {fileID: 0}
     - target: {fileID: 715311621, guid: 183c2d64d56b4eb49a2b4e02b20ec7e3, type: 3}
       propertyPath: maxDistance
-      value: 20
+      value: 23
       objectReference: {fileID: 0}
     - target: {fileID: 715311621, guid: 183c2d64d56b4eb49a2b4e02b20ec7e3, type: 3}
       propertyPath: RopeOrigin
@@ -1352,7 +1346,7 @@ PrefabInstance:
     - target: {fileID: 715311621, guid: 183c2d64d56b4eb49a2b4e02b20ec7e3, type: 3}
       propertyPath: RopeEndPoint
       value: 
-      objectReference: {fileID: 84544011}
+      objectReference: {fileID: 422372542}
     - target: {fileID: 715311621, guid: 183c2d64d56b4eb49a2b4e02b20ec7e3, type: 3}
       propertyPath: ropeLineDefinition
       value: 
@@ -1367,7 +1361,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 715311621, guid: 183c2d64d56b4eb49a2b4e02b20ec7e3, type: 3}
       propertyPath: grappleRetractSpeed
-      value: 0.75
+      value: 0.82
       objectReference: {fileID: 0}
     - target: {fileID: 715311621, guid: 183c2d64d56b4eb49a2b4e02b20ec7e3, type: 3}
       propertyPath: grappleForce

@@ -2,46 +2,64 @@
 
 public class GrappleHandler : MonoBehaviour
 {
+    #region Variable Declarations
+
+    [Header("Grapple Fist Transforms")]
     [SerializeField] private Transform playerFistHome = null;
-    [SerializeField] private GrappleInput inputHandler = null;
-    [SerializeField] private GameObject objectArt = null;
     [SerializeField] private Transform RopeOrigin = null;
     [SerializeField] private Transform RopeEndPoint = null;
+    [Header("Other Object Connections")]
+    [SerializeField] private GameObject objectArt = null;
+    [SerializeField] private GrappleInput inputHandler = null;
     [SerializeField] private LineRenderer ropeLineDefinition = null;
     [SerializeField] private Rigidbody rigidbodyToMove = null;
 
+    [Header("Grapple Behavior")]
     [SerializeField] private float maxDistance = 20f;
     [SerializeField] private float grappleFlySpeed = 10f;
     [SerializeField] private float grappleRetractSpeed = 0.5f;
+
+    [Space(10)]
     [SerializeField] private float grappleForce = 45f;
     [SerializeField] private float grappleAntigravityConstant = 5f;
     [SerializeField] private float playerControlForceConstant = 7.5f;
+
+    [Space(10)]
     [SerializeField] private float grappleCooldown = 1.5f;
 
-    private float grappleCurrentCooldown = 0f;
-
+    // Private, but acquired in awake
     private Camera mainCamera = null;
     private BoxCollider fistCollider = null;
-
-    private bool grappleOut = false;
-    private bool isGrappling = false;
-    private bool grappleRetracting = false;
     private Transform thisTransform = null;
 
 
+    // State bools
+    private bool grappleOut = false;
+    private bool isGrappling = false;
+    private bool grappleRetracting = false;
+    private bool collisionHappened = false;
+    
+    // Bad practice global variable
     private Vector3 fistDirection = Vector3.zero;
 
+    // Properties
     private float FistDistance
     { get { return (Vector3.Distance(thisTransform.position, playerFistHome.position)); } }
 
-    public float GrappleCurrentCooldown { get { return grappleCurrentCooldown; } }    
+    private Vector3 RopeDirection
+    { get { return -(RopeEndPoint.position - RopeOrigin.position).normalized; } }
 
+    public float GrappleCurrentCooldown { get; private set; } = 0f;
+
+    #endregion
+
+    #region Monobehaviour Methods
 
     private void Awake()
     {
         mainCamera = Camera.main;
-        fistCollider = this.GetComponent<BoxCollider>();
-        thisTransform = this.transform;
+        fistCollider = GetComponent<BoxCollider>();
+        thisTransform = transform;
         fistCollider.enabled = false;
         thisTransform.position = playerFistHome.position;
         objectArt.SetActive(false);
@@ -60,19 +78,89 @@ public class GrappleHandler : MonoBehaviour
         inputHandler.GrappleReleased -= OnGrappleReleased;
     }
 
+    private void FixedUpdate()
+    {
+        if(grappleOut)
+        {
+            if (FistDistance < maxDistance && !isGrappling && !grappleRetracting)
+            {
+                thisTransform.position += fistDirection.normalized * grappleFlySpeed;
+                thisTransform.rotation = Quaternion.LookRotation(RopeDirection);
+            }
+
+            if (Mathf.Abs(FistDistance - maxDistance) <= 0.5f)
+            {
+                isGrappling = false;
+                grappleRetracting = true;
+            }
+
+            if (grappleRetracting)
+            {
+                thisTransform.position = Vector3.MoveTowards(thisTransform.position, playerFistHome.position, grappleRetractSpeed);
+                thisTransform.rotation = Quaternion.LookRotation(RopeDirection);
+            }
+
+            if (Mathf.Abs(FistDistance) < 0.5f && grappleRetracting)
+            {
+                if(collisionHappened)
+                {
+                    DisableGrappleWithCooldown(grappleCooldown);
+                }
+                else
+                {
+                    DisableGrappleWithCooldown(0.00001f);
+                }
+
+                AudioManager.Instance.StopAllLoopedSoundEffects();
+                AudioManager.Instance.PlaySoundEffect(SoundEffect.GrappleReturn);
+            }
+
+            if(isGrappling)
+            {
+                // Add force in direction of rope, aka in direction of hand -> "butt" of grapple
+                rigidbodyToMove.AddForce(RopeDirection * grappleForce);
+
+                // Helps counteract normal gravity, makes you fly a lot better
+                rigidbodyToMove.AddForce(Vector3.up * grappleAntigravityConstant);
+
+                ApplyPlayerControlForce(); 
+            }
+
+            ropeLineDefinition.SetPositions(new Vector3[] { RopeEndPoint.position, RopeOrigin.position });
+        }
+        else if(GrappleCurrentCooldown > 0)
+        {
+            GrappleCurrentCooldown -= Time.deltaTime;
+        }
+    }
+
+    private void OnTriggerEnter(Collider other)
+    {
+        if (other.gameObject.CompareTag("Terrain") && !isGrappling)
+        {
+            AudioManager.Instance.PlaySoundEffect(SoundEffect.GrappleCollision);
+            collisionHappened = true;
+            isGrappling = true;
+        }
+    }
+
+    #endregion
+
+    #region Callbacks
+
     private void OnGrapplePressed()
     {
-        if(!grappleOut && grappleCurrentCooldown <= 0)
+        if (!grappleOut && GrappleCurrentCooldown <= 0)
         {
             grappleOut = true;
             grappleRetracting = false;
+
             objectArt.SetActive(true);
             fistCollider.enabled = true;
             ropeLineDefinition.gameObject.SetActive(true);
-            thisTransform.position = playerFistHome.position;
-            Ray toBeRaycasted = mainCamera.ScreenPointToRay(Input.mousePosition);
-            fistDirection = toBeRaycasted.direction;
-            thisTransform.rotation = Quaternion.LookRotation(mainCamera.transform.forward);
+
+            fistDirection = GrappleSetup();
+
             AudioManager.Instance.PlaySoundEffect(SoundEffect.GrappleFire);
             AudioManager.Instance.StartLoopedSoundEffect(SoundEffect.Spooling);
         }
@@ -80,58 +168,32 @@ public class GrappleHandler : MonoBehaviour
 
     private void OnGrappleReleased()
     {
-        //grappleOut = false;
         isGrappling = false;
         grappleRetracting = true;
-
         fistCollider.enabled = false;
-        // ropeLineDefinition.gameObject.SetActive(false);
-        // objectArt.SetActive(false);
-        //thisTransform.position = playerFistHome.transform.position;
     }
 
-    private void FixedUpdate()
+    #endregion
+
+    #region Private Functions
+
+    private Vector3 GrappleSetup()
     {
-        if(grappleOut)
-        {
-            ropeLineDefinition.SetPositions(new Vector3[] { RopeEndPoint.position, RopeOrigin.position});
-            thisTransform.rotation = Quaternion.LookRotation(-(RopeEndPoint.position - RopeOrigin.position).normalized);
-            Vector3 grappleDirection = fistDirection;
-            if (grappleDirection.magnitude >= 0.5f && FistDistance < maxDistance && !isGrappling && !grappleRetracting)
-                thisTransform.position = thisTransform.position + grappleDirection.normalized * grappleFlySpeed;
-            if(Mathf.Abs(FistDistance - maxDistance) <= 0.5f)
-            {
-                isGrappling = false;
-                grappleRetracting = true;
-            }
-            if(grappleRetracting)
-            {
-                thisTransform.rotation = Quaternion.LookRotation(-(RopeEndPoint.position - RopeOrigin.position).normalized);
-                thisTransform.position = Vector3.MoveTowards(thisTransform.position, playerFistHome.position, grappleRetractSpeed);
-            }
-            if(Mathf.Abs(FistDistance) < 0.5f && grappleRetracting)
-            {
-                grappleOut = false;
-                ropeLineDefinition.gameObject.SetActive(false);
-                objectArt.SetActive(false);
-                fistCollider.enabled = false;
-                AudioManager.Instance.StopAllLoopedSoundEffects();
-                AudioManager.Instance.PlaySoundEffect(SoundEffect.GrappleReturn);
-                grappleCurrentCooldown = grappleCooldown;
-            }
-            if(isGrappling)
-            {
-                // funny things to do: multiply force by inverse of ratio of the max distance/current distance (aka more force when further away)
-                // check for negative y movement on first addforce, lessen if present
-                rigidbodyToMove.AddForce(-(RopeEndPoint.position - RopeOrigin.position).normalized * grappleForce);
-                rigidbodyToMove.AddForce(Vector3.up * grappleAntigravityConstant);
-                ApplyPlayerControlForce();
-            }
-        }
-        else if(grappleCurrentCooldown > 0)
-        {
-            grappleCurrentCooldown -= Time.deltaTime;
-        }
+        thisTransform.position = playerFistHome.position;
+        thisTransform.rotation = Quaternion.LookRotation(mainCamera.transform.forward);
+
+        Ray toBeRaycasted = mainCamera.ScreenPointToRay(Input.mousePosition);
+        return toBeRaycasted.direction;
+    }
+
+    private void DisableGrappleWithCooldown(float cooldown)
+    {
+        grappleOut = false;
+        collisionHappened = false;
+        ropeLineDefinition.gameObject.SetActive(false);
+        objectArt.SetActive(false);
+        fistCollider.enabled = false;
+        GrappleCurrentCooldown = cooldown;
     }
 
     private void ApplyPlayerControlForce()
@@ -157,12 +219,5 @@ public class GrappleHandler : MonoBehaviour
         return Vector3.zero;
     }
 
-    private void OnTriggerEnter(Collider other)
-    {
-        if (other.gameObject.CompareTag("Terrain") && !isGrappling)
-        {
-            AudioManager.Instance.PlaySoundEffect(SoundEffect.GrappleCollision);
-            isGrappling = true;
-        }
-    }
+    #endregion
 }
