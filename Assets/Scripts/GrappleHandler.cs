@@ -96,7 +96,10 @@ public class GrappleHandler : MonoBehaviour
 
             if (grappleRetracting)
             {
-                thisTransform.position = Vector3.MoveTowards(thisTransform.position, playerFistHome.position, grappleRetractSpeed);
+                thisTransform.position = Vector3.MoveTowards(thisTransform.position, 
+                                                            playerFistHome.position, 
+                                                            grappleRetractSpeed);
+
                 thisTransform.rotation = Quaternion.LookRotation(RopeDirection);
             }
 
